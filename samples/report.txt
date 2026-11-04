@@ -1,0 +1,21 @@
+SYNTHETIC SAMPLE. Made up for the ioc-toolkit lab. Not a real incident,
+not real infrastructure. IPs are in documentation ranges and domains use
+the reserved .example and .test names.
+
+Analyst note, ticket SEC-0412 (synthetic)
+
+The phishing email came from billing@invoices-portal[.]example and linked to
+hxxps://invoices-portal[.]example/view?id=88 (the landing page). After login the
+victim was sent to hXXp://cdn-update(.)test:8080/kit/stage2.php, which served
+a script. The script called home to 203.0.113[.]45 and 198[.]51[.]100[.]23 on port 443.
+A second host, 2001:db8:0:1::25, answered DNS for update-check{dot}example.
+
+Dropped file: stage2.ps1 and a copy named invoice.pdf.exe
+  SHA256 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+  SHA1   a94a8fe5ccb19ba61c4c0873d391e987982fbbd3
+  MD5    098f6bcd4621d373cade4e832627b4f6
+The loader abuses CVE-2026-12345 (made-up id for this sample).
+
+Internal hosts touched: 10.20.0.15 and fileserver.corp.test.
+Not indicators: version 1.2.3.4.5, the time 10.20, and readme.txt.
+Reference URL in prose (should not keep the closing bracket): (see https://wiki.corp.test/ir/runbook).
