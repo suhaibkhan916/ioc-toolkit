@@ -1,5 +1,8 @@
 name: ci
 on: [push, pull_request]
+# Least privilege: the jobs only read the code.
+permissions:
+  contents: read
 jobs:
   lint-type:
     runs-on: ubuntu-latest
