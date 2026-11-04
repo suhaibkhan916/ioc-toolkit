@@ -18,7 +18,9 @@ _PATTERNS: list[tuple[IocType, re.Pattern[str]]] = [
     (IocType.SHA256, re.compile(r"\b[0-9a-fA-F]{64}\b")),
     (IocType.SHA1, re.compile(r"\b[0-9a-fA-F]{40}\b")),
     (IocType.MD5, re.compile(r"\b[0-9a-fA-F]{32}\b")),
-    (IocType.IPV4, re.compile(r"(?:\d{1,3}\.){3}\d{1,3}")),
+    # Not part of a longer dotted number such as a version "1.2.3.4.5".
+    # A full stop that ends a sentence ("... 203.0.113.45.") is still allowed.
+    (IocType.IPV4, re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?!\.?\d)")),
     (IocType.IPV6, re.compile(r"(?<![\w:])(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?![\w:])")),
     (IocType.DOMAIN, re.compile(r"\b(?:[A-Za-z0-9-]{1,63}\.)+[A-Za-z][A-Za-z0-9-]{1,62}\b")),
 ]
