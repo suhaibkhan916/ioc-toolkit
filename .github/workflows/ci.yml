@@ -1,0 +1,40 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  lint-type:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy
+
+  test-wheel:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install build pytest
+      - run: python -m build
+      - name: Wheel ships the py.typed marker
+        run: python -m zipfile -l dist/*.whl | grep -q "ioctk/py.typed"
+      - name: Tests run against the installed wheel, not the source tree
+        run: pip install dist/*.whl && python -m pytest -q
+      - name: Console script works
+        run: |
+          ioctk --version
+          ioctk defang https://evil.example/a | grep -qx 'hxxps://evil\[.\]example/a'
+          ioctk extract samples/report.txt --defang
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-py${{ matrix.python-version }}
+          path: dist/
