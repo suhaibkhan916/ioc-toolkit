@@ -66,3 +66,41 @@ def test_hash_inside_longer_hex_is_ignored() -> None:
 def test_empty_text() -> None:
     assert extract("") == []
     assert extract("   \n") == []
+
+
+def test_malformed_url_does_not_stop_the_run() -> None:
+    """Found by property tests."""
+    found = extract("bad http://[ then good 203.0.113.7")
+    assert Ioc(IocType.IPV4, "203.0.113.7") in found
+
+
+def test_url_with_ipv6_host_keeps_its_closing_bracket() -> None:
+    """Found by property tests. It used to come back as the bare address."""
+    assert extract("see http://[2001:db8::1]") == [Ioc(IocType.URL, "http://[2001:db8::1]")]
+
+
+def test_bracket_around_a_url_is_still_dropped() -> None:
+    assert extract("[http://a.example/x]") == [Ioc(IocType.URL, "http://a.example/x")]
+
+
+def test_ipv4_mapped_ipv6_is_one_address() -> None:
+    """Found by property tests. It used to give ::ffff:0 and 0.0.0.0, and the first is a
+    different address that nobody wrote."""
+    assert extract("from ::ffff:192.0.2.1 today") == [Ioc(IocType.IPV6, "::ffff:192.0.2.1")]
+
+
+def test_broken_dotted_ipv6_gives_no_wrong_address() -> None:
+    assert [i for i in extract("x ::ffff:0.0.0 y") if i.type is IocType.IPV6] == []
+
+
+def test_ipv6_at_the_end_of_a_sentence_still_matches() -> None:
+    assert extract("came from 2001:db8::1.") == [Ioc(IocType.IPV6, "2001:db8::1")]
+
+
+def test_colon_before_an_ipv4_still_matches() -> None:
+    assert extract("src:203.0.113.7") == [Ioc(IocType.IPV4, "203.0.113.7")]
+
+
+def test_email_starting_with_a_hyphen_keeps_it() -> None:
+    """Found by property tests: the hyphen was dropped, which gave a different address."""
+    assert extract("from -x@a.example") == [Ioc(IocType.EMAIL, "-x@a.example")]

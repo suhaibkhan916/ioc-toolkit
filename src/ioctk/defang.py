@@ -15,11 +15,13 @@ other tools are not consistent: [.] (.) {.} [dot] (dot) {dot} " dot ",
 from __future__ import annotations
 
 import re
-from urllib.parse import urlsplit
 
 from ioctk.types import IocType
 
 _SCHEMES = {"http": "hxxp", "https": "hxxps", "ftp": "fxp"}
+_URL_PARTS = re.compile(r"([A-Za-z][A-Za-z0-9+.-]*)://([^/?#]*)(.*)", re.S)
+
+_SPACED_DOT = re.compile(r"\s+dot\s+", re.I)
 
 # Order matters: longer and more specific patterns first.
 _REFANG_RULES: list[tuple[re.Pattern[str], str]] = [
@@ -27,17 +29,22 @@ _REFANG_RULES: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\b(h[xt]{2}p)(s?)(?=(://|\[:))", re.I), r"http\2"),
     (re.compile(r"\bfxp(?=(://|\[:))", re.I), "ftp"),
     (re.compile(r"\s*[\[({]\s*(?:dot|\.)\s*[\])}]\s*", re.I), "."),
-    (re.compile(r"\s+dot\s+", re.I), "."),
+    (_SPACED_DOT, "."),
     (re.compile(r"\\\."), "."),
     (re.compile(r"\s*[\[({]\s*(?:at|@)\s*[\])}]\s*", re.I), "@"),
     (re.compile(r"\[:\]"), ":"),
 ]
 
 
-def refang(text: str) -> str:
-    """Turn a defanged string back into its live form. Safe on live input."""
+def refang(text: str, *, spaced_dot: bool = True) -> str:
+    """Turn a defanged string back into its live form. Safe on live input.
+
+    Set spaced_dot=False for prose, where "the dot com" is just words.
+    """
     out = text.strip()
     for pattern, repl in _REFANG_RULES:
+        if pattern is _SPACED_DOT and not spaced_dot:
+            continue
         out = pattern.sub(repl, out)
     return out
 
@@ -47,16 +54,18 @@ def _dots(host: str) -> str:
 
 
 def _defang_url(url: str) -> str:
-    parts = urlsplit(url)
-    scheme = parts.scheme.lower()
-    new_scheme = _SCHEMES.get(scheme, scheme)
-    host = parts.netloc
+    # A regex, not urlsplit: urlsplit raises ValueError on "http://[" and drops tabs and
+    # newlines, which would shift the offsets. Defanging must work on broken URLs too.
+    match = _URL_PARTS.match(url)
+    if match is None:
+        return _dots(url)
+    scheme, host, rest = match.groups()
+    new_scheme = _SCHEMES.get(scheme.lower(), scheme)
     if host.startswith("[") and "]" in host:  # IPv6 literal keeps its brackets
-        inner, rest = host[1:].split("]", 1)
-        host = "[" + inner.replace(":", "[:]") + "]" + _dots(rest)
+        inner, after = host[1:].split("]", 1)
+        host = "[" + inner.replace(":", "[:]") + "]" + _dots(after)
     else:
         host = _dots(host)
-    rest = url[len(parts.scheme) + 3 + len(parts.netloc) :]
     return f"{new_scheme}://{host}{rest}"
 
 

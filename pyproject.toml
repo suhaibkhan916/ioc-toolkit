@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ioctk"
-version = "0.1.0"
+version = "0.1.1"
 description = "Typed library and CLI to defang, refang, validate and extract indicators of compromise."
 readme = "README.md"
 requires-python = ">=3.10"

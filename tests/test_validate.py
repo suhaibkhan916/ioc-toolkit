@@ -78,3 +78,16 @@ def test_to_dict() -> None:
     d = validate("nope").to_dict()
     assert d == {"value": "nope", "type": None, "valid": False,
                  "reason": "not a recognised indicator", "notes": []}  # fmt: skip
+
+
+def test_malformed_url_is_invalid_not_a_crash() -> None:
+    """Found by property tests. One such URL used to stop a whole extract run."""
+    for broken in ("http://[", "http://[]"):
+        assert validate(broken).valid is False
+
+
+def test_email_local_part_dots() -> None:
+    """Found by property tests: these used to validate."""
+    for bad in (".a@x.example", "a.@x.example", "a..b@x.example"):
+        assert validate(bad).valid is False
+    assert validate("a.b@x.example").valid is True

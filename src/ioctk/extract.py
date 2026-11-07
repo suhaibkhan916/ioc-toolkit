@@ -13,25 +13,40 @@ from ioctk.validate import validate
 # match is passed through validate() before it is kept.
 _PATTERNS: list[tuple[IocType, re.Pattern[str]]] = [
     (IocType.URL, re.compile(r"\b(?:https?|ftp)://[^\s<>\"'`]+", re.I)),
-    (IocType.EMAIL, re.compile(r"\b[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]+\.[A-Za-z]{2,63}\b")),
+    # A lookbehind, not \b: \b would cut a leading "-" or "+" and report another address.
+    (
+        IocType.EMAIL,
+        re.compile(r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]+\.[A-Za-z]{2,63}\b"),
+    ),
     (IocType.CVE, re.compile(r"\bCVE-\d{4}-\d{4,7}\b", re.I)),
     (IocType.SHA256, re.compile(r"\b[0-9a-fA-F]{64}\b")),
     (IocType.SHA1, re.compile(r"\b[0-9a-fA-F]{40}\b")),
     (IocType.MD5, re.compile(r"\b[0-9a-fA-F]{32}\b")),
+    # IPv6 before IPv4, so ::ffff:192.0.2.1 is one address and not an IPv4 inside it.
+    # The lookahead stops ::ffff:0 being cut from a longer dotted form: that is another address.
+    (
+        IocType.IPV6,
+        re.compile(
+            r"(?<![\w:])(?:[0-9a-fA-F]{0,4}:){2,7}"
+            r"(?:(?:\d{1,3}\.){3}\d{1,3}|[0-9a-fA-F]{0,4})(?![\w:]|\.\d)"
+        ),
+    ),
     # Not part of a longer dotted number such as a version "1.2.3.4.5".
     # A full stop that ends a sentence ("... 203.0.113.45.") is still allowed.
     (IocType.IPV4, re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?!\.?\d)")),
-    (IocType.IPV6, re.compile(r"(?<![\w:])(?:[0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}(?![\w:])")),
     (IocType.DOMAIN, re.compile(r"\b(?:[A-Za-z0-9-]{1,63}\.)+[A-Za-z][A-Za-z0-9-]{1,62}\b")),
 ]
 
 # Characters that often end a URL in prose but are not part of it.
 _URL_TRAIL = ".,;:!?)]}'\""
+_CLOSERS = {")": "(", "]": "[", "}": "{"}
 
 
 def _clean_url(url: str) -> str:
     while url and url[-1] in _URL_TRAIL:
-        if url[-1] == ")" and url.count("(") >= url.count(")"):
+        # A closer with a matching opener is part of the URL, such as http://[::1]
+        opener = _CLOSERS.get(url[-1])
+        if opener and url.count(opener) >= url.count(url[-1]):
             break
         url = url[:-1]
     return url
@@ -44,7 +59,8 @@ def extract(text: str, types: Iterable[IocType] | None = None) -> list[Ioc]:
     IP, so "https://evil.example/x" gives one URL, not a URL and a domain.
     """
     wanted = set(types) if types is not None else set(IocType)
-    live = refang(text) if text.strip() else text
+    # " dot " is not read in prose: "the dot com" would invent the indicator the.com.
+    live = refang(text, spaced_dot=False) if text.strip() else text
     taken: list[tuple[int, int]] = []
     found: list[tuple[int, Ioc]] = []
     seen: set[tuple[IocType, str]] = set()

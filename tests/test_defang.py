@@ -82,3 +82,8 @@ def test_refang_leaves_live_text_alone() -> None:
 
 def test_refang_does_not_touch_words_that_contain_dot() -> None:
     assert refang("dotnet.example") == "dotnet.example"
+
+
+def test_defang_handles_a_malformed_url() -> None:
+    """Found by property tests."""
+    assert defang("http://[") == "hxxp://["

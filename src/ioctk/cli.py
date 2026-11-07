@@ -12,6 +12,7 @@ nothing), 2 usage error or unreadable input.
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import sys
 from collections.abc import Sequence
@@ -68,7 +69,19 @@ def _read(path: str) -> str:
     return Path(path).read_text(encoding="utf-8-sig", errors="replace")
 
 
+def _safe_streams() -> None:
+    """Stop odd characters crashing the tool. A Windows console is often cp1252."""
+    for stream, errors in (
+        (sys.stdout, "backslashreplace"),
+        (sys.stderr, "backslashreplace"),
+        (sys.stdin, "replace"),
+    ):
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(errors=errors)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    _safe_streams()
     parser = _build_parser()
     try:
         args = parser.parse_args(argv)
