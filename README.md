@@ -69,7 +69,7 @@ Checks run in this build:
 - `ruff check` and `ruff format --check`: clean.
 - `python -m build` gives `ioctk-0.1.1-py3-none-any.whl` (10 KB) with `ioctk/py.typed` inside.
 
-CI runs lint and type checks once, then builds the wheel on Python 3.10, 3.12 and 3.13, installs it, and runs the tests and the console script against the installed copy. CI has not been run yet because the repo has not been pushed.
+CI runs lint and type checks once, then builds the wheel on Python 3.10, 3.12 and 3.13, installs it, and runs the tests and the console script against the installed copy. All of these jobs pass on GitHub Actions.
 
 ## What broke and how it was fixed
 
