@@ -34,7 +34,7 @@ ioctk extract samples/report.txt --defang
 ioctk extract samples/report.txt --type url --type ipv4 --json
 python -m pytest -q
 ruff check . && ruff format --check . && mypy
-python -m build                      # dist/ioctk-0.1.0-py3-none-any.whl and the sdist
+python -m build                      # dist/ioctk-0.1.1-py3-none-any.whl and the sdist
 ```
 
 `defang`, `refang` and `validate` read values from the arguments, or one per line from stdin. Exit codes: `0` success, `1` `validate` found an invalid value or `extract` found nothing, `2` usage error or unreadable file.
@@ -44,8 +44,8 @@ As a library:
 ```python
 from ioctk import IocType, defang, extract, validate
 
-defang("https://evil.example/a")                 # 'hxxps://evil[.]example/a'
-validate("10.20.0.15").notes                     # ('private',)
+defang("https://evil.example/a")  # 'hxxps://evil[.]example/a'
+validate("10.20.0.15").notes  # ('private',)
 [i.value for i in extract(text, [IocType.URL])]
 ```
 
@@ -64,10 +64,10 @@ exit code 1
 
 Checks run in this build:
 
-- 77 pytest tests pass (Python 3.14 locally on the editable install, and Python 3.11 against the built wheel installed into a separate folder).
+- 104 pytest tests pass (Python 3.14 locally on the editable install). Version 0.1.0 had 77 tests and also passed against its built wheel on Python 3.11.
 - `mypy --strict` on `src` and `tests`: no issues in 11 files.
 - `ruff check` and `ruff format --check`: clean.
-- `python -m build` gives `ioctk-0.1.0-py3-none-any.whl` (10 KB) with `ioctk/py.typed` inside.
+- `python -m build` gives `ioctk-0.1.1-py3-none-any.whl` (10 KB) with `ioctk/py.typed` inside.
 
 CI runs lint and type checks once, then builds the wheel on Python 3.10, 3.12 and 3.13, installs it, and runs the tests and the console script against the installed copy. CI has not been run yet because the repo has not been pushed.
 
@@ -77,12 +77,15 @@ CI runs lint and type checks once, then builds the wheel on Python 3.10, 3.12 an
 - **setuptools deprecation warning on build.** `python -m build` printed a warning that the table form `license = { text = "MIT" }` is deprecated, with a removal date of 2027-02-18. Changed to the SPDX string `license = "MIT"` with `license-files`, and raised the build requirement to `setuptools>=77`. The wheel metadata now has `License-Expression: MIT`.
 - **A virtual environment on this machine had no `python.exe`.** `python -m venv .venv` created the folder without the interpreter, so the local checks used the user site-packages instead, and the wheel test used `pip install --target` into a temporary folder. This is a local environment problem, not a project one; CI uses clean runners.
 
+- **Bugs found later by property tests and a code review (fixed in 0.1.1).** The 77 example tests had 97% branch coverage and missed all of these. `http://[` crashed `validate`, `defang` and a whole `extract` run. `http://[2001:db8::1]` lost its closing bracket and came back as a bare IP. `::ffff:0.0.0.0` was reported as `::ffff:0`, a different address nobody wrote. Bad dots in email local parts passed, and a leading hyphen was dropped. Values holding a newline or space passed, because `$` also matches before a final newline and nothing checked the characters. CVE ids accepted digits from other scripts. `the dot com` in prose invented the domain `the.com`. Printing an unusual character crashed the CLI on a cp1252 console. Each has a regression test.
+
 ## Limitations
 
 - File extensions are excluded as TLDs. `.zip` and `.mov` are real TLDs, so a real domain such as `something.zip` is missed. This is a deliberate trade-off for fewer false positives in prose.
 - Domains are checked by shape, not against the public suffix list, so `anything.notatld` passes as long as the TLD is letters.
 - A domain that appears only inside a URL is not listed as a separate domain. Block lists that want both need to parse the URL host themselves.
-- IPv6 extraction from prose is loose and is checked by `ipaddress` afterwards; unusual forms such as embedded IPv4 (`::ffff:192.0.2.1`) are not extracted from text.
+- IPv6 extraction from prose is loose and is checked by `ipaddress` afterwards.
+- `extract` does not read a spaced ` dot ` in prose, because that would turn ordinary words into a domain. So `evil dot example` in a report is missed, while `refang` on a single value still reads it.
 - Defanged URLs keep dots in the path and query on purpose, so file names stay readable. Only the host is defanged.
 - No hash type beyond MD5, SHA-1 and SHA-256 (no SHA-512, ssdeep or imphash).
 
